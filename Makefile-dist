@@ -1,0 +1,8 @@
+TAPE=pacemuzx.tap
+ROMS=pacman.6e pacman.6f pacman.6h pacman.6j
+
+$(TAPE): start.part $(ROMS) end.part
+	cat start.part $(ROMS) end.part > $(TAPE)
+
+clean:
+	rm -f pacemuzx.tap

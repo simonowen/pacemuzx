@@ -1,0 +1,30 @@
+@echo off
+
+if not exist pacman.6e goto missing
+if not exist pacman.6f goto missing     
+if not exist pacman.6h goto missing     
+if not exist pacman.6j goto missing     
+goto got_roms
+
+:missing
+echo.
+echo ****************************************************************
+echo.
+echo The Pac-Man ROMs can't be distributed with this program, so you
+echo must provide your own copies of:
+echo.
+echo   pacman.6e pacman.6f pacman.6h pacman.6j
+echo.
+echo Copy them to this directory and re-run to generate: pacemuzx.tap
+echo.
+echo ****************************************************************
+echo.
+pause
+goto end
+
+:got_roms
+copy /b start.part+pacman.6e+pacman.6f+pacman.6h+pacman.6j+end.part pacemuzx.tap
+
+start pacemuzx.tap
+
+:end
