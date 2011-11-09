@@ -5,7 +5,7 @@ if "%1"=="clean" goto clean
 png2bin.pl tiles.png 6
 png2bin.pl sprites.png 12
 
-pasmo --tap pacemuzx.asm pacemuzx.o
+pasmo --tap pacemuzx.asm pacemuzx.o pacemuzx.sym
 
 copy /b loader.tap+pacemuzx.o pacemuzx.tap
 
