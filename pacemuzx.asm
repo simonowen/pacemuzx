@@ -827,6 +827,13 @@ not_p:         rra
                jr  c,not_o
                res 1,d              ; O = left
 not_o:
+               ld  a,&7f
+               in  a,(keyboard)
+               rra
+               jr  c,not_space
+               res 5,d              ; space = coin 1
+               res 5,e              ; space = start 1
+not_space:
 
 ; Kempston joystick
 read_joy:      in  a,(kempston)     ; read Kempston joystick
@@ -851,11 +858,35 @@ not_up:        rra
                res 5,d              ; Fire = coin 1
                res 5,e              ; Fire = start 1
 not_fire:
-               ld  a,d
-               ld  (&5000),a
+
+               ld  a,d              ; dip including controls
+               cpl                  ; invert so set=pressed
+               and %00001111        ; keep only direction bits
+               jr  z,joy_done       ; skip if nothing pressed
+               ld  c,a
+               neg
+               and c                ; keep least significant set bit
+               cp  c                ; was it the only bit?
+               jr  z,joy_done       ; skip if so
+
+               ld  a,(last_controls); last valid (single) controls
+               xor c                ; check for differences
+               or  %11110000        ; convert to mask
+               ld  c,a
+               ld  a,d              ; current controls
+               or  %00001111        ; release all directions
+               and c                ; press the changed key
+               jr  joy_multi        ; apply change but don't save
+
+joy_done:      ld  a,d
+               ld  (last_controls),a; update last valid controls
+               ld  a,d              ; use original value
+joy_multi:     ld  (&5000),a
                ld  a,e
                ld  (&5040),a
                ret
+
+last_controls: defb 0
 
 
 ; Check sprite visibility, returns carry if any visible, no-carry if all hidden
