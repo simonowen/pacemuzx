@@ -36,6 +36,7 @@ attr_colour:   equ &07              ; default = white on black
 flash_colour:  equ &41              ; maze flash colour = bright blue on black
 
 kempston:      equ 31               ; Kempston joystick in bits 4-0
+divide:        equ 227              ; DivIDE interface
 border:        equ 254              ; Border colour in bits 2-0
 keyboard:      equ 254              ; Keyboard matrix in bits 4-0
 
@@ -126,16 +127,40 @@ fail_msg:      defm "This program requires a +2A/+3"
 ; Next, move any data from load position to final location
 start3:        ld  sp,new_stack
 
+               xor a
+               out (border),a       ; black border
+
                ld  hl,&0000
                ld  de,&e000
                ld  bc,&2000
-               ldir                 ; copy 8K of ROM to &e000
+               ldir                 ; copy 8K of ROM to &e000 (start of page 3)
 
-               xor a                ; normal paging mode
+               call patch_rom       ; patch the ROM while it's at the correct location
+
+               xor a                ; +3 normal paging
                ld  bc,&1ffd
-               out (c),a            ; set paging to R/5/2/X
-               ld  a,%00000111      ; normal display, page 7
-               ld  b,&7f
+               out (c),a            ; restore R/5/2/0, for ROM access at &c000
+
+               ld  a,%10000011      ; DivIDE page 3
+               out (divide),a       ; page in at &2000, if present
+
+               ld  hl,&c000
+               ld  de,&2000
+               ld  bc,&2000
+               ldir                 ; copy first 8K of ROM to DivIDE page 3
+
+               ld  a,%10000000      ; DivIDE page 0
+               out (divide),a       ; page in at &2000, if present
+
+               ld  de,&2000
+               ld  bc,&2000
+               ldir                 ; copy last 8K of ROM to DivIDE page 0
+
+               ld  a,%01000000      ; MAPRAM
+               out (divide),a       ; page out DivIDE, if present
+
+               ld  a,(scr_page)     ; normal display, page 7
+               ld  bc,&7ffd
                out (c),a            ; page 7 at &c000
                ld  ixh,&80          ; write to alt screen
 
@@ -149,19 +174,18 @@ start3:        ld  sp,new_stack
                ld  bc,&0720
                ldir                 ; copy unshifted sprite data
 
-
 ; Clear both screens and set the default attribute colour
                ld  b,2              ; 2 screens to prepare
 scrinit_lp:    push bc
 
+               ld  hl,&4000
+               ld  de,&4001
                ld  bc,&1800
-               ld  l,c
-               ld  e,&01
-               ld  (hl),l           ; clear display data
-               ld  a,&40
+               ld  a,h
                or  ixh
                ld  h,a
                ld  d,a
+               ld  (hl),l           ; clear display data
                ldir
 
                ld  bc,&0300
@@ -193,16 +217,13 @@ attr_lp:       ld  (hl),b           ; hide left column (6 pixels needed)
                djnz scrinit_lp      ; finish both screens
 
 
-               call mk_lookups      ; create all the look-up tables
-
-               call page_rom
+               call mk_lookups      ; create all the look-up tables and pre-shift sprites
+               call page_rom        ; page in sound table and ROM
                call sound_init      ; enable sound chip
-               call patch_rom       ; patch DIP fixes and hook us into the interrupt handling
-
 
                ld  hl,&5000         ; Pac-Man I/O area
                xor a
-clear_io:      ld  (hl),a           ; zero it
+clear_io:      ld  (hl),a           ; zero fill it
                inc l
                jr  nz,clear_io
 
@@ -213,12 +234,8 @@ clear_io:      ld  (hl),a           ; zero it
                ld  a,(dip_5080)
                ld  (&5080),a
 
-               xor a
-               out (border),a       ; black border
-
                ld  sp,&4c00         ; stack in spare RAM
-               jp  0                ; start the ROM!
-
+               jp  0                ; start the ROM!  (and page in DivIDE, if present)
 
 page_rom:      push af
                push bc
@@ -1932,6 +1949,9 @@ div_ok:        exx
 
                bit 5,b
                jr  z,sound_lp
+
+               xor a
+               out (border),a
 
                ld  hl,sinit_data
                ld  de,&ffbf
