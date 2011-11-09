@@ -13,7 +13,7 @@ sprites.bin: sprites.png
 	./png2bin.pl $< 12
 
 pacemuzx.o: pacemuzx.asm tiles.bin sprites.bin $(ROMS)
-	pasmo --tap pacemuzx.asm pacemuzx.o pacman.sym
+	pasmo --tap pacemuzx.asm pacemuzx.o pacemuzx.sym
 
 dist: $(TAPE)
 	rm -rf dist
