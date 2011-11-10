@@ -191,7 +191,7 @@ scrinit_lp:    push bc
                ld  bc,&0300
                ld  (hl),attr_colour ; set display attrs
                ldir
- 
+
                ld  bc,&00e4
                ld  (hl),l           ; clear sprite restore data
                ldir
@@ -233,6 +233,12 @@ clear_io:      ld  (hl),a           ; zero fill it
                ld  (&5040),a
                ld  a,(dip_5080)
                ld  (&5080),a
+
+wait_no_key:   xor a
+               in  a,(keyboard)
+               cpl
+               and %00011111        ; check for any key
+               jr  nz,wait_no_key   ; loop until all released, as temporary SpectraNet work-around
 
                ld  sp,&4c00         ; stack in spare RAM
                jp  0                ; start the ROM!  (and page in DivIDE, if present)
@@ -1725,7 +1731,7 @@ do_score1:     inc h
 do_score2:     inc h
                inc h
                inc h                ; advance to header area containing score
-               
+
                ld  ixl,26           ; screen offset for left edge
 
                ld  l,&c7
@@ -1773,7 +1779,7 @@ chk_digit:     ld  d,&43
                cp  (hl)
                ret z
                ld  (hl),a
- 
+
                ex  af,af'
                push hl
                call draw_tile_x
