@@ -10,7 +10,7 @@ use Compress::Zlib;
 use Getopt::Std;
 
 # Allow -v option for verbose output
-getopt('v');
+getopts('v');
 
 # Strip path from input filename, and check 
 $0 =~ s/.*\///;
