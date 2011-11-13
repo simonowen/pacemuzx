@@ -32,8 +32,7 @@ debug: equ 0
 ; db00-dbe3 - screen data behind sprites (alt)
 ; dbe4-ffff - pre-rotated tile graphics
 
-attr_colour:   equ &07              ; default = white on black
-flash_colour:  equ &41              ; maze flash colour = bright blue on black
+default_attr:  equ &07              ; default = white on black
 
 kempston:      equ 31               ; Kempston joystick in bits 4-0
 divide:        equ 227              ; DivIDE interface
@@ -188,8 +187,9 @@ scrinit_lp:    push bc
                ld  (hl),l           ; clear display data
                ldir
 
-               ld  bc,&0300
-               ld  (hl),attr_colour ; set display attrs
+               ld  bc,&0300         ; &300 bytes to fill
+               ld  a,(attr_colour)
+               ld  (hl),a           ; fill display attrs
                ldir
 
                ld  bc,&00e4
@@ -343,7 +343,6 @@ do_int_hook:   ld  (old_stack+1),sp
                push ix
 
                call do_flip         ; show last frame, page in new one
-               call flash_maze      ; flash the end of level maze
 
                ld  hl,&5062         ; sprite 1 x
                inc (hl)             ; offset 1 pixel left (mirrored)
@@ -355,6 +354,7 @@ set_border 1
 set_border 2
                call do_tiles        ; update a portion of the background tiles
 set_border 3
+               call flash_maze      ; update maze colour if changed
                call flash_pills     ; flash the power pills
 set_border 4
                call do_save         ; save under the new sprite positions
@@ -431,15 +431,18 @@ scr_page:      defb %00000111       ; normal screen (page 5), page 7 at &c000
 ; We also need to remove the ghost box door, as the real attribute wipe does.
 ;
 flash_maze:    ld  a,(&4440)        ; attribute of maze top-right
-               cp  &1f
-               ld  a,attr_colour    ; default = white
-               jr  nz,maze_blue
+               cp  &1f              ; white?
+               ld  a,(attr_colour)  ; current attribute setting
+               jr  nz,maze_blue     ; if not, draw as normal
+
+               xor %01000000        ; toggle bright
+               ld  b,a
 
                ld  a,&40            ; blank tile
                ld  (&420d),a        ; clear left of ghost box door
                ld  (&41ed),a        ; clear right of ghost box door
 
-               ld  a,flash_colour   ; default = bright blue
+               ld  a,b
 maze_blue:
                ; fall through...
 
@@ -474,6 +477,8 @@ attr_fill_lp2: ld  (hl),a
                jr  nz,attr_scr_lp
 
 attr_same:     jp  page_rom
+
+attr_colour:   defb default_attr
 
 
 ; Set the power pill palette colour to the correct state by reading the 6 known
@@ -735,7 +740,38 @@ pill_clear_2:  call page_screen
 ;
 do_input:      ld  de,&ffff         ; nothing pressed
 
+               ld  a,&7f
+               in  a,(keyboard)
+               bit 1,a              ; Sym?
+               jr  nz,not_colours
+
                ld  a,&f7
+               in  a,(keyboard)
+               ld  bc,&0501         ; 5 bits to check, first colour is blue
+inp_col_lp:    rra
+               jr  nc,got_colour    ; 1-5 = blue/red/magenta/green/cyan
+               inc c
+               djnz inp_col_lp
+
+               ld  a,&ef
+               in  a,(keyboard)
+               bit 4,a              ; 6 = yellow?
+               jr  z,got_colour
+               inc c
+               bit 3,a              ; 7 = white?
+               jp  nz,input_done
+
+got_colour:    ld  a,&fe
+               in  a,(keyboard)
+               rra                  ; Shift?
+               jr  c,not_bright
+               set 6,c              ; use bright version
+not_bright:
+               ld  a,c
+               ld  (attr_colour),a  ; set to be picked up by flash_maze
+               ret
+
+not_colours:   ld  a,&f7
                in  a,(keyboard)
                cpl
                and %00000111
@@ -886,7 +922,7 @@ not_fire:
 
 joy_done:      ld  a,d
                ld  (last_controls),a; update last valid controls
-               ld  a,d              ; use original value
+input_done:    ld  a,d              ; use original value
 joy_multi:     ld  (&5000),a
                ld  a,e
                ld  (&5040),a
@@ -1786,7 +1822,7 @@ chk_digit:     ld  d,&43
                pop hl
                ret
 
-;
+
 ; Draw changes to the fruit display, which is remapped to a vertical layout
 ; We use the sprite versions of the tiles, for easier drawing
 ;
