@@ -2,7 +2,8 @@
 ;
 ; http://simonowen.com/spectrum/pacemuzx/
 
-debug: equ 0
+debug:         equ 0                ; non-zero for border stripes showing CPU use
+colour:        equ 0                ; non-zero for coloured sprites
 
 ; Memory maps
 ;
@@ -45,12 +46,12 @@ pac_header:    equ &43c0            ; 64 bytes containing the score
 
 ; address of saved sprite block followed by the data itself
 spr_save_2:    equ &5b00
-spr_save_3:    equ spr_save_2+2+(3*12)
-spr_save_4:    equ spr_save_3+2+(3*12)
-spr_save_5:    equ spr_save_4+2+(3*12)
-spr_save_6:    equ spr_save_5+2+(3*12)
-spr_save_7:    equ spr_save_6+2+(3*12)
-spr_save_end:  equ spr_save_7+2+(3*12)
+spr_save_3:    equ spr_save_2+2+(3*12)+2+(3*3)
+spr_save_4:    equ spr_save_3+2+(3*12)+2+(3*3)
+spr_save_5:    equ spr_save_4+2+(3*12)+2+(3*3)
+spr_save_6:    equ spr_save_5+2+(3*12)+2+(3*3)
+spr_save_7:    equ spr_save_6+2+(3*12)+2+(3*3)
+spr_save_end:  equ spr_save_7+2+(3*12)+2+(3*3)
 
 ; pre-shifted sprite graphics
 spr_data_0:    equ spr_save_end
@@ -74,9 +75,9 @@ end_tile_data: equ tile_data_2 + (192*1*6) ;                   00111111
 sound_table:   equ &c000
 
 
-MACRO set_border, colour
+MACRO set_border, bordcol
 IF debug
-    ld a,colour
+    ld a,bordcol
     out (border),a
 ENDIF
 ENDM
@@ -202,6 +203,7 @@ scrinit_lp:    push bc
                ld  (hl),l           ; clear sprite restore data
                ldir
 
+IF !colour
                ld  hl,&5800+(10*32)+4 ; left column of tunnel trim 
                ld  a,h
                or  ixh
@@ -217,7 +219,7 @@ attr_lp:       ld  (hl),b           ; hide left column (6 pixels needed)
                add hl,de
                dec a
                jr nz,attr_lp
-
+ENDIF
                call do_flip         ; switch to other display
                pop bc
                djnz scrinit_lp      ; finish both screens
@@ -366,7 +368,9 @@ set_border 4
 set_border 5
                call do_sprites      ; draw the 6 new masked sprites
 set_border 6
+IF !colour
                call do_trim         ; trim sprites at screen edge
+ENDIF
 set_border 7
                call do_input        ; scan the joystick and DIP switches
                call do_sound        ; convert the sound to the AY chip
@@ -1118,6 +1122,7 @@ tile_comp:     call find_change     ; scan block for display changes
                cp  176-63+6         ; after last ghost tile?
                jr  nc,tile_mapped
 
+IF !colour
                ex  af,af'           ; save tile
                set 2,d              ; switch to attributes
                ld  a,(de)           ; fetch tile attribute
@@ -1127,6 +1132,7 @@ tile_comp:     call find_change     ; scan block for display changes
                dec c                ; red ghost?
                jr  nz,tile_mapped
                add a,6              ; offset to Blinky tiles
+ENDIF
 tile_mapped:
                ex  af,af'           ; save tile for later
                push de
@@ -1333,13 +1339,14 @@ draw_spr:      ld  a,h
                and %00000111        ; shift position
 
                ex  af,af'
-               call map_spr         ; map sprites to the correct orientation/colour
+               call map_sprite      ; map sprites to the correct orientation/colour
 
 draw_spr2:
                ex  de,hl
                add a,a              ; *2
                ld  l,a
                ld  h,0
+               ld  a,c              ; save sprite attribute
                add hl,hl            ; *4
                ld  b,h
                ld  c,l
@@ -1381,7 +1388,13 @@ rot_3_7:       rra
 spr_2:         add hl,hl
                add hl,bc
                ld  b,12
-rot_0_lp:      ld  a,(de)
+               push de
+               jr  spr_2_start
+spr_2_lp:      inc d
+               ld  a,d
+               and %00000111
+               call z,blockdown_de
+spr_2_start:   ld  a,(de)
                or  (hl)
                ld  (de),a
                inc e
@@ -1391,11 +1404,51 @@ rot_0_lp:      ld  a,(de)
                ld  (de),a
                dec e
                inc hl
-               inc d
-               ld  a,d
+               djnz spr_2_lp
+               pop hl
+IF colour
+               ex  af,af'
+               ld  c,a
+               ld  b,h
+
+               ld  a,h
+               rrca
+               rrca
+               rrca
+               and %00000011
+               or  &58
+               or  ixh
+               ld  h,a
+
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+               ld  a,l
+               add a,32
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+               ld  (hl),c
+               dec l
+               ld  (hl),c
+
+               ld  a,b
                and %00000111
-               call z,blockdown_de
-               djnz rot_0_lp
+               cp  5
+               jp  c,page_rom
+
+               ld  a,l
+               add a,32
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+ENDIF
                jp  page_rom
 
 ; draw a sprite using 3-byte source data (shifts 5-7)
@@ -1407,38 +1460,99 @@ spr_3:         push bc
                pop bc
                add hl,bc
                ld  b,12
-spr_3_lp:      ld  a,(de)
-               or  (hl)
-               ld  (de),a
-               inc e
-               inc hl
-               ld  a,(de)
-               or  (hl)
-               ld  (de),a
-               inc e
-               inc hl
-               ld  a,(de)
-               or  (hl)
-               ld  (de),a
-               dec e
-               dec e
-               inc hl
-               inc d
+               push de
+               jr  spr_3_start
+spr_3_lp:      inc d
                ld  a,d
                and %00000111
                call z,blockdown_de
+spr_3_start:   ld  a,(de)
+               or  (hl)
+               ld  (de),a
+               inc e
+               inc hl
+               ld  a,(de)
+               or  (hl)
+               ld  (de),a
+               inc e
+               inc hl
+               ld  a,(de)
+               or  (hl)
+               ld  (de),a
+               dec e
+               dec e
+               inc hl
                djnz spr_3_lp
+               pop hl
+IF colour
+               ex  af,af'
+               ld  c,a
+               ld  b,h
+
+               ld  a,h
+               rrca
+               rrca
+               rrca
+               and %00000011
+               or  &58
+               or  ixh
+               ld  h,a
+
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+               ld  a,l
+               add a,32
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+               ld  (hl),c
+               dec l
+               ld  (hl),c
+               dec l
+               ld  (hl),c
+
+               ld  a,b
+               and %00000111
+               cp  5
+               jp  c,page_rom
+
+               ld  a,l
+               add a,32
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+               inc l
+               ld  (hl),c
+ENDIF
                jp  page_rom
 
 
 ; Map an arcade tile number to our tile number, allowing for attribute differences
 ; and any tiles we've mapped to different locations (we have no fruit tiles)
-map_spr:       ld  b,0
+map_sprite:    ld  b,0
                ld  a,e
                srl a
                rl  b                ; b0=flip-y
                rra
                rl  b                ; b1=flip-y, b0=flip-x
+IF colour
+               ld  e,a              ; juggle the few spare registers
+               ld  c,d              ; it's still faster than stack use!
+               ld  d,attr_map/256
+               ld  a,(de)           ; look up default sprite attribute
+               ld  d,c
+               ld  c,a
+               ld  a,e
+ENDIF
                cp  16               ; big pac-man
                ret c                ; anything before is unchanged
                cp  28               ; scared ghost
@@ -1466,20 +1580,42 @@ map_big:       cp  24               ; closed mouth
                or  %00011000        ; re-use back segments
                ret
 
-map_ghost:     ;jr $ ;01=red 03=pink 05=cyan 07=orange
-               sub 16
+map_ghost:     ; D = 01=red 03=pink 05=cyan 07=orange
+IF !colour
+               sub 16               ; offset to ghost with mouth
+ENDIF
                dec d                ; red?
                ret z
-               add a,16
+IF !colour
+               add a,16             ; restore original ghost sprite
+ENDIF
                bit 3,d              ; transparent colour?
-               ret z                ; return if not
+               jr  nz,map_eyes
+               srl d
+               dec d                ; pink?
+               ld  c,&43            ; red
+               ret z
+               dec d                ; cyan?
+               ld  c,&45
+               ret z
+               ld  c,&44            ; green (should be orange)
+               ret
+
+map_eyes:      ld  c,&47            ; bright white
                add a,32             ; eyes offset
                and %11111110        ; use only even positions
                ret
 
-map_scared:    bit 1,d              ; check colour
-               ret z                ; return if normal colour
-               add a,2              ; white flashing offset
+map_scared:
+IF colour
+               add a,2              ; use solid scared ghost, coloured blue
+ENDIF
+               bit 1,d              ; check colour
+               ret z                ; return if normal colour (transparent)
+IF !colour
+               add a,2              ; use solid scared ghost for white
+ENDIF
+               ld  c,&47            ; white
                ret
 
 
@@ -1622,12 +1758,59 @@ spr_save:      ld  a,h
 
                call xy_to_addr      ; convert to Speccy display address
 
+IF colour
+               push hl
+
+               ld  a,h
+               rra
+               rra
+               rra
+               and %00000011
+               or  &58
+               or  ixh
+               ld  h,a
+
                ex  de,hl
                ld  (hl),e           ; save address low
-               inc l
+               inc hl
                ld  (hl),d           ; save address high
-               inc l
+               inc hl
                ex  de,hl
+
+               ldi
+               ldi
+               ldi
+               ld  a,l
+               add a,32-3
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+               ldi
+               ldi
+               ldi
+               ld  a,l
+               add a,32-3
+               ld  l,a
+               adc a,h
+               sub l
+               ld  h,a
+               ld  a,h
+               and %01111111
+               cp  &5b
+               jr  nc,save_2
+               ldi
+               ldi
+               ldi
+save_2:
+               pop hl
+ENDIF
+               ex  de,hl
+               ld  (hl),e           ; save address low
+               inc hl
+               ld  (hl),d           ; save address high
+               inc hl
+               ex  de,hl            ; HL=screen, DE=save
 
                ld  bc,3*12          ; 3 bytes and 12 lines
 
@@ -1647,8 +1830,7 @@ save_lp:       ld  a,l
 ;
 ; Remove the previous sprites by restoring the image that was underneath them
 ;
-do_restore:
-               call page_screen
+do_restore:    call page_screen
 
                ld  hl,spr_save_2
                call spr_restore
@@ -1677,10 +1859,41 @@ spr_restore:   ld  a,h
                ld  (hl),0           ; flag 'no restore data'
 
                ld  e,a              ; restore address low
-               inc l
+               inc hl
                ld  d,(hl)           ; restore address high
-               inc l
-
+               inc hl
+IF colour
+               ldi
+               ldi
+               ldi
+               ld  a,e
+               add a,32-3
+               ld  e,a
+               adc a,d
+               sub e
+               ld  d,a
+               ldi
+               ldi
+               ldi
+               ld  a,e
+               add a,32-3
+               ld  e,a
+               adc a,d
+               sub e
+               ld  d,a
+               ld  a,d
+               and %01111111
+               cp  &5b
+               jr  nc,restore_2
+               ldi
+               ldi
+               ldi
+restore_2:
+               ld  e,(hl)
+               inc hl
+               ld  d,(hl)
+               inc hl
+ENDIF
                ld  bc,3*12          ; 3 bytes of 12 lines
 
 restore_lp:    ld  a,e
@@ -1911,7 +2124,13 @@ chk_fruit:     ld  b,scradtab/256
                sub &91              ; subtract cherry tile number
                srl a                ; /2
                srl a                ; /4 tiles per fruit, to give fruit sprite number (cherry=0)
-
+IF colour
+               push hl
+               ld  l,a
+               ld  h,attr_map/256
+               ld  c,(hl)
+               pop hl
+ENDIF
                call page_screen
                jp  draw_spr2
 
@@ -1981,6 +2200,7 @@ chk_life:      ld  b,scradtab/256
 
                call page_screen
                ld  a,72             ; sprite for left-facing Pac-Man
+               ld  c,&46            ; yellow attribute
                jp  draw_spr2
 
 
@@ -2636,6 +2856,14 @@ conv_y:        defs &100
 scradtab:      defs &200
 bak_chars1:    defs &400            ; copy of Pac-Man display for normal screen
 bak_chars2:    defs &400            ; copy of Pac-Man display for alt screen
+
+IF colour
+; Map sprite number to suitable Spectrum attribute colour
+attr_map:      defb &42,&42,&06,&46,&42,&44,&41,&47, &42,&42,&07,&07,&42,&42,&00,&00
+               defb &46,&46,&46,&46,&46,&46,&46,&46, &46,&46,&46,&46,&41,&41,&00,&00
+               defb &42,&42,&42,&42,&42,&42,&42,&42, &45,&45,&45,&45,&46,&46,&46,&46
+               defb &46,&07,&42,&42,&46,&46,&46,&46, &46,&46,&46,&46,&46,&46,&46,&46
+ENDIF
 
 end_b000:      equ $
 
