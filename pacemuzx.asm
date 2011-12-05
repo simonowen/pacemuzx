@@ -98,7 +98,7 @@ dip_5080:      defb %11001001       ; -dbbllcc      d=hard/normal bb=bonus life 
 start2:        di
                ld  a,(&5b5c)        ; sysvar holding 128K paging
                ex  af,af'           ; keep safe
-               ld  a,%00000001      ; special paging mode (0/1/2/3)
+               ld  a,%00000001      ; special paging, banks 0/1/2/3
                ld  bc,&1ffd         ; +3 paging port
                out (c),a            ; attempt paging
                ld  a,(3)            ; peek value in Pac-Man ROM
@@ -106,10 +106,10 @@ start2:        di
                jr  z,start3         ; if so, start up
 
                ex  af,af'
-               out (c),a            ; restore 128K paging (if any)
                call &0d6b           ; CLS
                ld  a,2              ; main screen
                call &1601           ; CHAN-OPEN
+               out (c),a            ; restore 128K paging (disturbed due to partial address decoding)
                ei
 
                ld  hl,fail_msg
@@ -136,9 +136,9 @@ start3:        ld  sp,new_stack
 
                call patch_rom       ; patch the ROM while it's at the correct location
 
-               xor a                ; +3 normal paging
+               ld  a,%00000100      ; +3 normal paging
                ld  bc,&1ffd
-               out (c),a            ; restore R/5/2/0, for ROM access at &c000
+               out (c),a            ; restore R3/5/2/0, for ROM access at &c000
 
                ld  a,%10000011      ; DivIDE page 3
                out (divide),a       ; page in at &2000, if present
@@ -245,7 +245,7 @@ wait_no_key:   xor a
 
 page_rom:      push af
                push bc
-               ld  a,%00000001      ; special +2A/+3 paging, banks 0/1/2/3
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
                out (c),a
                pop bc
@@ -254,7 +254,7 @@ page_rom:      push af
 
 page_screen:   push af
                push bc
-               xor a                ; normal paging, banks R/5/2/7
+               ld  a,%00000100      ; +3 normal paging, R3/5/2/7
                ld  bc,&1ffd
                out (c),a
                pop bc
@@ -538,7 +538,7 @@ pill_1:        cp  &9f
                cp  &10
                jr  nz,pill_clear_1
 pill_1_on:
-               xor a                ; normal paging, banks R/5/2/7
+               ld  a,%00000100      ; +3 normal paging, R3/5/2/7
                ld  bc,&1ffd
                out (c),a
 
@@ -560,12 +560,12 @@ pill_1_on:
                inc h
                ld  (hl),d
 
-               ld  a,1
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a            ; special paging (ROM)
+               out (c),a            ; page ROM
                ret
 ; clear pill
-pill_clear_1:  xor a                ; normal paging, banks R/5/2/7
+pill_clear_1:  ld  a,%00000100      ; +3 normal paging, R3/5/2/7
                ld  bc,&1ffd
                out (c),a
 
@@ -586,9 +586,9 @@ pill_clear_1:  xor a                ; normal paging, banks R/5/2/7
                inc h
                ld  (hl),a
 
-               ld  a,1
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a            ; special paging (ROM)
+               out (c),a            ; page ROM
                ret
 
 
@@ -654,9 +654,9 @@ pill_2:        cp  &10
                dec l
                inc h
 
-               ld  a,1
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a            ; special paging (ROM)
+               out (c),a            ; page ROM
                ret
 
 ; clear pill
@@ -730,9 +730,9 @@ pill_clear_2:  call page_screen
                and e
                ld  (hl),a
 
-               ld  a,1
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a            ; special paging (ROM)
+               out (c),a            ; page ROM
                ret
 
 
@@ -1175,7 +1175,7 @@ draw_tile_x:   ld  a,b
                add hl,hl            ; *4
                add hl,bc            ; *6
 
-               xor a                ; normal paging, banks R/5/2/7
+               ld  a,%00000100      ; +3 normal paging, R3/5/2/7
                ld  bc,&1ffd
                out (c),a
 
@@ -1297,9 +1297,9 @@ tile_2_lp:     ld  a,(de)
                jr  tile_exit
 
 tile_exit:     
-               ld  a,1              ; special paging, banks 0/1/2/3
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a
+               out (c),a            ; page ROM
 
                exx
                ret
@@ -1507,7 +1507,7 @@ trim_edge:
                or  ixh              ; offset to current screen
                ld  h,a
 
-               xor a
+               ld  a,%00000100      ; +3 normal paging, R3/5/2/7
                ld  bc,&1ffd
                out (c),a            ; normal paging (screen)
 
@@ -1531,9 +1531,9 @@ trim_line_lp:  ld  a,(hl)
                call z,blockdown_hl
                djnz trim_line_lp
 
-               ld  a,1
+               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
                ld  bc,&1ffd
-               out (c),a            ; special paging (ROM)
+               out (c),a            ; page ROM
 
                ret
 
