@@ -163,12 +163,12 @@ start3:        ld  sp,new_stack
                out (c),a            ; page 7 at &c000
                ld  ixh,&80          ; write to alt screen
 
-               ld  hl,&b000
+               ld  hl,load_tiles
                ld  de,tile_data_0
                ld  bc,&0480
                ldir                 ; copy unshifted tile data
 
-               ld  hl,&b480
+               ld  hl,load_sprites
                ld  de,spr_data_0
                ld  bc,&0720
                ldir                 ; copy unshifted sprite data
@@ -192,7 +192,7 @@ scrinit_lp:    push bc
                ld  (hl),a           ; fill display attrs
                ldir
 
-               ld  bc,&00e4
+               ld  bc,spr_save_end-spr_save_2
                ld  (hl),l           ; clear sprite restore data
                ldir
 
@@ -217,7 +217,7 @@ attr_lp:       ld  (hl),b           ; hide left column (6 pixels needed)
                djnz scrinit_lp      ; finish both screens
 
 
-               call mk_lookups      ; create all the look-up tables and pre-shift sprites
+               call make_tables     ; create all the look-up tables and pre-shift sprites
                call page_rom        ; page in sound table and ROM
                call sound_init      ; enable sound chip
 
@@ -2149,7 +2149,7 @@ play_sound:    ld  de,&ffbf         ; sound register port MSB
 
 ; Create the look-up tables used to speed up various calculations
 ;
-mk_lookups:    ld  hl,conv_8_6
+make_tables:   ld  hl,conv_8_6
                xor a
 conv_86_lp:    ld  (hl),a           ; 0
                inc l
@@ -2560,32 +2560,32 @@ find_change:   ld  a,(de)   ; 0
                pop hl               ; junk return to update
                ret
 
-end_a000:      equ $-1
+end_a000:      equ $
 
 new_stack:     equ &b000            ; hangs back into &Axxx
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
                org &b000
+; Tables are generated here at run time
+conv_8_6:      defs &100
+conv_x:        defs &100
+conv_y:        defs &100
+scradtab:      defs &200
+bak_chars1:    defs &400            ; copy of Pac-Man display for normal screen
+bak_chars2:    defs &400            ; copy of Pac-Man display for alt screen
 
-; Graphics here at load time
-               incbin "tiles.bin"      ; 192 tiles * 6 lines * 1 byte per line = 1152 bytes
-               incbin "sprites.bin"    ; 76 sprites * 12 lines * 2 byte per line = 1824 bytes
+end_b000:      equ $
 
-; Tables here at run time
-conv_8_6:      equ &b000
-conv_x:        equ conv_8_6 + &100
-conv_y:        equ conv_x + &100
-scradtab:      equ conv_y + &100
-bak_chars1:    equ scradtab + &200   ; copy of Pac-Man display for normal screen
-bak_chars2:    equ bak_chars1 + &400 ; copy of Pac-Man display for alt screen
-
-end_b000:      equ bak_chars2 + &400
+               org &b000
+; Graphics are here at load time
+load_tiles:    incbin "tiles.bin"      ; 192 tiles * 6 lines * 1 byte per line = 1152 bytes
+load_sprites:  incbin "sprites.bin"    ; 76 sprites * 12 lines * 2 byte per line = 1824 bytes
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
                org &c000
-
+; 16K of Pac-Man ROMs
                incbin "pacman.6e"
                incbin "pacman.6f"
                incbin "pacman.6h"
