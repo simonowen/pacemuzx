@@ -748,11 +748,24 @@ do_input:      ld  de,&ffff         ; nothing pressed
                ld  a,&7f
                in  a,(keyboard)
                bit 1,a              ; Sym?
-               jr  nz,not_colours
+               jr  nz,not_sym
+
+               ld  bc,&0501         ; 5 bits to check, first colour is blue
+
+               ld  a,&fe
+               in  a,(keyboard)
+               rra                  ; Shift?
+               jr  c,not_bright
+               set 6,c              ; use bright version
+
+               ld  a,&fb
+               in  a,(keyboard)
+               rra
+               jp  nc,do_quit        ; Sym+Shift+Q = quit/reset
+not_bright:
 
                ld  a,&f7
                in  a,(keyboard)
-               ld  bc,&0501         ; 5 bits to check, first colour is blue
 inp_col_lp:    rra
                jr  nc,got_colour    ; 1-5 = blue/red/magenta/green/cyan
                inc c
@@ -764,19 +777,15 @@ inp_col_lp:    rra
                jr  z,got_colour
                inc c
                bit 3,a              ; 7 = white?
-               jp  nz,input_done
+               jr  z,got_colour
+               rra
+               jp  c,input_done
 
-got_colour:    ld  a,&fe
-               in  a,(keyboard)
-               rra                  ; Shift?
-               jr  c,not_bright
-               set 6,c              ; use bright version
-not_bright:
-               ld  a,c
+got_colour:    ld  a,c
                ld  (attr_colour),a  ; set to be picked up by flash_maze
                ret
 
-not_colours:   ld  a,&f7
+not_sym:       ld  a,&f7
                in  a,(keyboard)
                cpl
                and %00000111
@@ -2363,6 +2372,13 @@ blockdown_de:  ld a,e
                sub 8
                ld d,a
                ret
+
+; Resetting the Spectrum while +3 paging is active is a problem for hardware
+; using traps, so provide a method to restore paging and reset to the menu
+do_quit:       xor a
+               ld  bc,&1ffd
+               out (c),a
+               jp  0
 
 
 ; Check that Spectranet traps are disabled, if one is connected
