@@ -1323,11 +1323,12 @@ tile_exit:
 ; Draw a 12x12 sprite  (H=x, L=y, D=attr)
 ;
 draw_spr:      ld  a,h
-               cp  &10              ; off bottom of screen?
-               ret c
+               cp  &10
+               ret c                ; off bottom of screen
                ld  a,l
-               cp  &10              ; off right of screen?
-               ret c
+               inc a                ; catch 255 as invalid
+               cp  &11
+               ret c                ; off right of screen
 
                ld  a,d
                and a                ; sprite palette all black?
@@ -1615,10 +1616,11 @@ do_save:       ld  hl,(&5062)       ; pre-fetch position data as we page it out
 
 ; Save a single sprite-sized block, if visible
 spr_save:      ld  a,h
-               cp  16
+               cp  &10
                ret c                ; off bottom of screen
                ld  a,l
-               cp  16
+               inc a                ; catch 255 as invalid
+               cp  &11
                ret c                ; off right of screen
 
                ld  a,d
