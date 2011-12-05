@@ -94,8 +94,8 @@ dip_5040:      defb %11111111       ; c--sdrlu     c=cocktail/upright ; s=servic
 dip_5080:      defb %11001001       ; -dbbllcc      d=hard/normal bb=bonus life at 10K/15K/20K/none ; ll=1/2/3/5 lives ; cc=freeplay/1coin1credit/1coin2credits/2coins1credit
                                     ; default: normal, bonus life at 10K, 3 lives, 1 coin 1 credit
 
-; First, check that +2A/+3 paging is available
 start2:        di
+
                ld  a,(&5b5c)        ; sysvar holding 128K paging
                ex  af,af'           ; keep safe
                ld  a,%00000001      ; special paging, banks 0/1/2/3
@@ -106,22 +106,11 @@ start2:        di
                jr  z,start3         ; if so, start up
 
                ex  af,af'
-               call &0d6b           ; CLS
-               ld  a,2              ; main screen
-               call &1601           ; CHAN-OPEN
                out (c),a            ; restore 128K paging (disturbed due to partial address decoding)
                ei
 
-               ld  hl,fail_msg
-msg_lp:        ld  a,(hl)
-               and a
-               ret z
-               rst 16               ; PRINT-A
-               inc l
-               jr  msg_lp
-
-fail_msg:      defm "This program requires a +2A/+3"
-               defb 0
+               ld  hl,plus2a3_msg
+               jp  print_msg
 
 ; Next, move any data from load position to final location
 start3:        ld  sp,new_stack
@@ -139,6 +128,23 @@ start3:        ld  sp,new_stack
                ld  a,%00000100      ; +3 normal paging
                ld  bc,&1ffd
                out (c),a            ; restore R3/5/2/0, for ROM access at &c000
+
+
+               call chk_specnet     ; check if Spectranet traps are enabled
+               jr  z,no_specnet     ; skip forwards if not
+
+               ld  hl,specnet_msg   ; prompt to disable traps
+               call print_msg
+
+wait_specnet:  ld  bc,0             ; delay roughly half a second
+delay:         djnz $
+               djnz $
+               dec c
+               jr  nz,delay
+
+               call chk_specnet     ; check traps again
+               jr  nz,wait_specnet  ; jump back if they're still enabled
+no_specnet:
 
                ld  a,%10000011      ; DivIDE page 3
                out (divide),a       ; page in at &2000, if present
@@ -2358,10 +2364,55 @@ blockdown_de:  ld a,e
                ld d,a
                ret
 
-               defs (-$)%256          ; align to next 256-byte boundary
+
+; Check that Spectranet traps are disabled, if one is connected
+chk_specnet:   ld  hl,&3ff9         ; PAGEIN
+               ld  a,(hl)           ; save currently paged value at trap
+               push af
+               push hl
+
+               ld  hl,&4000         ; first byte in (display) RAM after trap
+               ld  c,(hl)           ; save current value
+               ld  (hl),&c9         ; RET
+               call &3ff9           ; attempt page-in
+               ld  (hl),c           ; restore display byte
+
+               pop hl
+               pop af
+               cp  (hl)             ; did the paging change?
+               ret z                ; return Z if not (no Spectranet or traps disabled)
+               jp  &007c            ; exit via RET in Speccy ROM to page out
+
+
+; Display a message using the ROM routines
+; String in HL (null-terminated), paging expected to be correct
 ;
+print_msg:     push hl
+               call &0d6b           ; CLS
+               ld  a,2              ; main screen
+               call &1601           ; CHAN-OPEN
+               pop hl
+
+msg_lp:        ld  a,(hl)
+               and a
+               ret z
+               rst 16               ; PRINT-A
+               inc l
+               jr  msg_lp
+
+
+specnet_msg:   defm "Disable Spectranet traps now..."
+               defb 0
+
+plus2a3_msg:   defm "This program requires a +2A/+3"
+               defb 0
+
+
+               defs (-$)%256          ; align to next 256-byte boundary
+
 ; Scan a 32-byte block for changes, used for fast scanning of the Pac-Man display
 ; Aligned on a 256-byte boundary for easy resuming of the scanning
+;
 find_change:   ld  a,(de)   ; 0
                cp  (hl)
                ret nz
