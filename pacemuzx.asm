@@ -449,19 +449,18 @@ flash_maze:    ld  a,(&4440)        ; attribute of maze top-right
 
                ld  a,b
 maze_blue:
-               ; fall through...
+               ; attribute to set now in A
 
-; Set attributes to value in A
-set_attrs:     call page_screen
+               call page_screen
+
+attr_scr_lp:   ld  hl,&5800+5
 
                ex  af,af'
-               ld  a,2              ; 2 screens
-attr_scr_lp:   ld  hl,&5800+5
                ld  a,h
                or  ixh
                ld  h,a
-
                ex  af,af'
+
                cp  (hl)             ; check current colour
                jr  z,attr_same      ; skip fill if it's the correct colour
 
@@ -474,12 +473,6 @@ attr_fill_lp2: ld  (hl),a
                jr  nz,attr_fill_lp2
                add hl,de
                djnz attr_fill_lp
-
-               call do_flip         ; switch to other screen
-
-               ex  af,af'
-               dec a
-               jr  nz,attr_scr_lp
 
 attr_same:     jp  page_rom
 
