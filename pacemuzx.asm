@@ -286,7 +286,6 @@ patch_rom:     ld  a,&56            ; ED *56*
                ld  (&3248),a
 
                ld  a,1              ; start clearing at &5001, to avoid DIP overwrite
-               ld  (&2353),a
                ld  (&230c),a
                ld  (&2353),a
                ld  a,7              ; shorten block clear after start adjustment above
@@ -1000,6 +999,7 @@ strip_0:       ld  b,6
 strip_1:       ld  b,5
                ld  de,pac_chars+(32*(6))
                ld  hl,bak_chars1-pac_footer
+               add hl,de
                call tile_comp
                ld  hl,bak_chars1
                call do_score1
