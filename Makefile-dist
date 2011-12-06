@@ -5,4 +5,4 @@ $(TAPE): start.part $(ROMS) end.part
 	cat start.part $(ROMS) end.part > $(TAPE)
 
 clean:
-	rm -f pacemuzx.tap
+	rm -f $(TAPE)
