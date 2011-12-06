@@ -1,4 +1,4 @@
-; Pac-Man hardware emulation for the Sinclair ZX Spectrum
+; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.2)
 ;
 ; http://simonowen.com/spectrum/pacemuzx/
 
