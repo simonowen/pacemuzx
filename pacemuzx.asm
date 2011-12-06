@@ -163,7 +163,7 @@ no_specnet:
                ldir                 ; copy last 8K of ROM to DivIDE page 0
 
                ld  a,%01000000      ; MAPRAM
-               out (divide),a       ; page out DivIDE, if present
+               out (divide),a       ; page 3 at &0000 (read-only), page 0 at &2000
 
                ld  a,(scr_page)     ; normal display, page 7
                ld  bc,&7ffd
@@ -754,11 +754,6 @@ do_input:      ld  de,&ffff         ; nothing pressed
                rra                  ; Shift?
                jr  c,not_bright
                set 6,c              ; use bright version
-
-               ld  a,&fb
-               in  a,(keyboard)
-               rra
-               jp  nc,do_quit        ; Sym+Shift+Q = quit/reset
 not_bright:
 
                ld  a,&f7
@@ -2587,13 +2582,6 @@ blockdown_de:  ld a,e
                sub 8
                ld d,a
                ret
-
-; Resetting the Spectrum while +3 paging is active is a problem for hardware
-; using traps, so provide a method to restore paging and reset to the menu
-do_quit:       xor a
-               ld  bc,&1ffd
-               out (c),a
-               jp  0
 
 
 ; Check that Spectranet traps are disabled, if one is connected
