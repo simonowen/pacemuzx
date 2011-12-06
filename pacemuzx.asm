@@ -46,12 +46,12 @@ pac_header:    equ &43c0            ; 64 bytes containing the score
 
 ; address of saved sprite block followed by the data itself
 spr_save_2:    equ &5b00
-spr_save_3:    equ spr_save_2+2+(3*12)+2+(3*3)
-spr_save_4:    equ spr_save_3+2+(3*12)+2+(3*3)
-spr_save_5:    equ spr_save_4+2+(3*12)+2+(3*3)
-spr_save_6:    equ spr_save_5+2+(3*12)+2+(3*3)
-spr_save_7:    equ spr_save_6+2+(3*12)+2+(3*3)
-spr_save_end:  equ spr_save_7+2+(3*12)+2+(3*3)
+spr_save_3:    equ spr_save_2+2+(3*12)+2
+spr_save_4:    equ spr_save_3+2+(3*12)+2
+spr_save_5:    equ spr_save_4+2+(3*12)+2
+spr_save_6:    equ spr_save_5+2+(3*12)+2
+spr_save_7:    equ spr_save_6+2+(3*12)+2
+spr_save_end:  equ spr_save_7+2+(3*12)+2
 
 ; pre-shifted sprite graphics
 spr_data_0:    equ spr_save_end
@@ -1742,7 +1742,6 @@ spr_save:      ld  a,h
                ld  d,a
 
                call xy_to_addr      ; convert to Speccy display address
-
 IF colour
                push hl
 
@@ -1756,45 +1755,19 @@ IF colour
                ld  h,a
 
                ex  de,hl
-               ld  (hl),e           ; save address low
-               inc hl
-               ld  (hl),d           ; save address high
-               inc hl
+               ld  (hl),e           ; attr low
+               inc l
+               ld  (hl),d           ; attr high
+               inc l
                ex  de,hl
 
-               ldi
-               ldi
-               ldi
-               ld  a,l
-               add a,32-3
-               ld  l,a
-               adc a,h
-               sub l
-               ld  h,a
-               ldi
-               ldi
-               ldi
-               ld  a,l
-               add a,32-3
-               ld  l,a
-               adc a,h
-               sub l
-               ld  h,a
-               ld  a,h
-               and %01111111
-               cp  &5b
-               jr  nc,save_2
-               ldi
-               ldi
-               ldi
-save_2:
                pop hl
 ENDIF
                ex  de,hl
-               ld  (hl),e           ; save address low
-               inc hl
-               ld  (hl),d           ; save address high
-               inc hl
+               ld  (hl),e           ; data low
+               inc l
+               ld  (hl),d           ; data high
+               inc l
                ex  de,hl            ; HL=screen, DE=save
 
                ld  bc,3*12          ; 3 bytes and 12 lines
@@ -1842,43 +1815,50 @@ spr_restore:   ld  a,h
                ret z                ; no data saved
 
                ld  (hl),0           ; flag 'no restore data'
-
-               ld  e,a              ; restore address low
-               inc hl
-               ld  d,(hl)           ; restore address high
-               inc hl
 IF colour
-               ldi
-               ldi
-               ldi
-               ld  a,e
-               add a,32-3
-               ld  e,a
-               adc a,d
-               sub e
-               ld  d,a
-               ldi
-               ldi
-               ldi
-               ld  a,e
-               add a,32-3
-               ld  e,a
-               adc a,d
-               sub e
-               ld  d,a
-               ld  a,d
+               ld  e,a              ; attr low
+               inc l
+               ld  d,(hl)           ; attr high
+               inc l
+
+               ex  de,hl
+               ld  a,(attr_colour)  ; current maze colour
+               ld  bc,32-2
+
+               ld  (hl),a           ; 1st line
+               inc l
+               ld  (hl),a
+               inc l
+               ld  (hl),a
+               add hl,bc
+               ld  (hl),a           ; 2nd line
+               inc l
+               ld  (hl),a
+               inc l
+               ld  (hl),a
+               add hl,bc
+
+               ex  af,af'
+               ld  a,h
                and %01111111
-               cp  &5b
-               jr  nc,restore_2
-               ldi
-               ldi
-               ldi
-restore_2:
-               ld  e,(hl)
-               inc hl
-               ld  d,(hl)
-               inc hl
+               cp  &5b              ; beyond attributes?
+               jr  nc,restore_2     ; if so, stop painting
+               ex  af,af'
+
+               ld  (hl),a           ; 3rd line
+               inc l
+               ld  (hl),a
+               inc l
+               ld  (hl),a
+
+restore_2:     ex  de,hl
+               ld  a,(hl)
 ENDIF
+               ld  e,a              ; data low
+               inc l
+               ld  d,(hl)           ; data high
+               inc l
+
                ld  bc,3*12          ; 3 bytes of 12 lines
 
 restore_lp:    ld  a,e
