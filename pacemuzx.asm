@@ -994,8 +994,8 @@ fulldraw_alt:  ld  b,28
 tile_strips:   jp  nz,strip_odd
 strip_even:    jp  strip_0
 
-strip_0:       ld  b,6
-               ld  de,pac_chars
+strip_0:       ld  b,7
+               ld  de,pac_chars+(32*7*0)
                ld  hl,bak_chars1-pac_footer
                add hl,de
                call tile_comp
@@ -1003,21 +1003,17 @@ strip_0:       ld  b,6
                ld  (strip_even+1),hl
                ret
 
-strip_1:       ld  b,5
-               ld  de,pac_chars+(32*(6))
+strip_1:       ld  b,7
+               ld  de,pac_chars+(32*7*1)
                ld  hl,bak_chars1-pac_footer
                add hl,de
                call tile_comp
-               ld  hl,bak_chars1
-               call do_score1
-               ld  hl,bak_chars1
-               call do_score2
                ld  hl,strip_2
                ld  (strip_even+1),hl
                ret
 
-strip_2:       ld  b,6
-               ld  de,pac_chars+(32*(6+5))
+strip_2:       ld  b,7
+               ld  de,pac_chars+(32*7*2)
                ld  hl,bak_chars1-pac_footer
                add hl,de
                call tile_comp
@@ -1025,32 +1021,31 @@ strip_2:       ld  b,6
                ld  (strip_even+1),hl
                ret
 
-strip_3:       ld  b,5
-               ld  de,pac_chars+(32*(6+5+6))
+strip_3:       ld  b,7
+               ld  de,pac_chars+(32*7*3)
                ld  hl,bak_chars1-pac_footer
                add hl,de
                call tile_comp
-               ld  hl,bak_chars1
-               call do_fruit
-               ld  hl,bak_chars1
-               call do_lives
                ld  hl,strip_4
                ld  (strip_even+1),hl
                ret
 
-strip_4:       ld  b,6
-               ld  de,pac_chars+(32*(6+5+6+5))
-               ld  hl,bak_chars1-pac_footer
-               add hl,de
-               call tile_comp
+strip_4:       ld  hl,bak_chars1
+               call do_score1
+               ld  hl,bak_chars1
+               call do_score2
+               ld  hl,bak_chars1
+               call do_fruit
+               ld  hl,bak_chars1
+               call do_lives
                ld  hl,strip_0
                ld  (strip_even+1),hl
                ret
 
 strip_odd:     jp  strip_0_alt
 
-strip_0_alt:   ld  b,6
-               ld  de,pac_chars
+strip_0_alt:   ld  b,7
+               ld  de,pac_chars+(32*7*0)
                ld  hl,bak_chars2-pac_footer
                add hl,de
                call tile_comp
@@ -1058,21 +1053,17 @@ strip_0_alt:   ld  b,6
                ld  (strip_odd+1),hl
                ret
 
-strip_1_alt:   ld  b,5
-               ld  de,pac_chars+(32*(6))
+strip_1_alt:   ld  b,7
+               ld  de,pac_chars+(32*7*1)
                ld  hl,bak_chars2-pac_footer
                add hl,de
                call tile_comp
-               ld  hl,bak_chars2
-               call do_score1
-               ld  hl,bak_chars2
-               call do_score2
                ld  hl,strip_2_alt
                ld  (strip_odd+1),hl
                ret
 
-strip_2_alt:   ld  b,6
-               ld  de,pac_chars+(32*(6+5))
+strip_2_alt:   ld  b,7
+               ld  de,pac_chars+(32*7*2)
                ld  hl,bak_chars2-pac_footer
                add hl,de
                call tile_comp
@@ -1080,24 +1071,23 @@ strip_2_alt:   ld  b,6
                ld  (strip_odd+1),hl
                ret
 
-strip_3_alt:   ld  b,5
-               ld  de,pac_chars+(32*(6+5+6))
+strip_3_alt:   ld  b,7
+               ld  de,pac_chars+(32*7*3)
                ld  hl,bak_chars2-pac_footer
                add hl,de
                call tile_comp
-               ld  hl,bak_chars2
-               call do_fruit
-               ld  hl,bak_chars2
-               call do_lives
                ld  hl,strip_4_alt
                ld  (strip_odd+1),hl
                ret
 
-strip_4_alt:   ld  b,6
-               ld  de,pac_chars+(32*(6+5+6+5))
-               ld  hl,bak_chars2-pac_footer
-               add hl,de
-               call tile_comp
+strip_4_alt:   ld  hl,bak_chars2
+               call do_score1
+               ld  hl,bak_chars2
+               call do_score2
+               ld  hl,bak_chars2
+               call do_fruit
+               ld  hl,bak_chars2
+               call do_lives
                ld  hl,strip_0_alt
                ld  (strip_odd+1),hl
                ret
