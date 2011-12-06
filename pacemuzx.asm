@@ -3,7 +3,7 @@
 ; http://simonowen.com/spectrum/pacemuzx/
 
 debug:         equ 0                ; non-zero for border stripes showing CPU use
-colour:        equ 0                ; non-zero for coloured sprites
+colour:        equ 1                ; non-zero for coloured sprites
 
 ; Memory maps
 ;
