@@ -22,16 +22,16 @@ colour:        equ 1                ; non-zero for coloured sprites
 ; c000-dfff - 8K sound table
 ; e000-ffff - first 8K of Pac-Man ROM (unpatched)
 ;
-; Graphics (normal paging R/5/2/7):
-; 0000-3fff - Spectrum ROM
+; Graphics (normal paging R3/5/2/7):
+; 0000-3fff - Spectrum 48K ROM
 ; 4000-5aff - Spectrum display (normal)
-; 5b00-5be3 - screen data behind sprites (normal)
-; 5be4-9fff - pre-rotated sprite graphics
+; 5b00-5bef - screen data behind sprites (normal)
+; 5bf0-9fff - pre-rotated sprite graphics
 ; a000-afff - emulation code
 ; b000-bfff - look-up tables
 ; c000-daff - Spectrum display (alt)
-; db00-dbe3 - screen data behind sprites (alt)
-; dbe4-ffff - pre-rotated tile graphics
+; db00-dbef - screen data behind sprites (alt)
+; dbf0-ffff - pre-rotated tile graphics
 
 default_attr:  equ &07              ; default = white on black
 
@@ -46,12 +46,12 @@ pac_header:    equ &43c0            ; 64 bytes containing the score
 
 ; address of saved sprite block followed by the data itself
 spr_save_2:    equ &5b00
-spr_save_3:    equ spr_save_2+2+(3*12)+2
-spr_save_4:    equ spr_save_3+2+(3*12)+2
-spr_save_5:    equ spr_save_4+2+(3*12)+2
-spr_save_6:    equ spr_save_5+2+(3*12)+2
-spr_save_7:    equ spr_save_6+2+(3*12)+2
-spr_save_end:  equ spr_save_7+2+(3*12)+2
+spr_save_3:    equ spr_save_2+2+2+(3*12)   ; attr address, data address, 3 bytes * 12 lines
+spr_save_4:    equ spr_save_3+2+2+(3*12)
+spr_save_5:    equ spr_save_4+2+2+(3*12)
+spr_save_6:    equ spr_save_5+2+2+(3*12)
+spr_save_7:    equ spr_save_6+2+2+(3*12)
+spr_save_end:  equ spr_save_7+2+2+(3*12)
 
 ; pre-shifted sprite graphics
 spr_data_0:    equ spr_save_end
