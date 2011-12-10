@@ -235,18 +235,18 @@ clear_io:      ld  (hl),a           ; zero fill it
                inc l
                jr  nz,clear_io
 
+               ld  a,&bf
+               in  a,(keyboard)
+               bit 4,a              ; Z if H pressed
+
                ld  a,(dip_5000)     ; set hardware dips to our defaults
                ld  (&5000),a
                ld  a,(dip_5040)
                ld  (&5040),a
                ld  a,(dip_5080)
-               ld  (&5080),a
-
-wait_no_key:   xor a
-               in  a,(keyboard)
-               cpl
-               and %00011111        ; check for any key
-               jr  nz,wait_no_key   ; loop until all released, as temporary SpectraNet work-around
+               jr  nz,not_hard
+               and %10111111        ; set Hard difficulty
+not_hard:      ld  (&5080),a
 
                ld  sp,&4c00         ; stack in spare RAM
                jp  0                ; start the ROM!  (and page in DivIDE, if present)
