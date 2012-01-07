@@ -445,16 +445,23 @@ flash_maze:    ld  a,(&4440)        ; attribute of maze top-right
                jr  nz,maze_blue     ; if not, draw as normal
 
                xor %01000000        ; toggle bright
-               ld  b,a
+               ld  b,a              ; save
 
+IF colour
+patch_and:     and %00000111        ; keep basic colour
+               cp  7                ; white?
+               jr  nz,not_white
+               ld  b,&41            ; change to bright blue
+not_white:     cp  1                ; blue?
+               jr  nz,not_blue
+               ld  b,&07            ; change to white
+not_blue:
+ENDIF
                ld  a,&40            ; blank tile
                ld  (&420d),a        ; clear left of ghost box door
                ld  (&41ed),a        ; clear right of ghost box door
-
                ld  a,b
 maze_blue:
-               ; attribute to set now in A
-
                call page_screen
 
 attr_scr_lp:   ld  hl,&5800+5
