@@ -1589,65 +1589,87 @@ ENDIF
 ; Trim sprites that overlap the maze edges, as the real hardware does automatically
 ; Here we trim partial bytes, as full blocks are hidden behind black on black attrs
 ;
-do_trim:       ld  de,&5062         ; start of sprite data
-               ld  b,&07            ; 7 sprites to check
+do_trim:       ld  hl,&5062         ; sprite x for first sprite
+               ld  de,&ff00         ; no trim yet
+               ld  b,7              ; 7 sprites to check
 
-trim_lp:       ld  a,(de)           ; sprite x
-               inc e
-               cp  &10              ; hidden sprite?
-               jr  c,no_trim
+trim_lp:       ld  a,(hl)           ; sprite x
+               inc l
+               cp  &10              ; hidden?
+               jr  c,trim_next
                cp  &20              ; clipped at right edge?
                jr  c,may_trim
                cp  &f0              ; clipped at left edge?
-               jr  nc,may_trim
-no_trim:       inc e
+               jr  c,trim_next
+
+may_trim:      ld  a,(hl)           ; sprite y
+               cp  &10              ; hidden?
+               jr  c,trim_next
+
+               cp  d                ; compare min
+               jr  nc,no_trim_min
+               ld  d,a              ; update min
+no_trim_min:   cp  e                ; compare max
+               jr  c,trim_next
+               ld  e,a              ; update max
+               jr  trim_next
+
+trim_next:     inc l                ; skip sprite y
                djnz trim_lp
-               ret
 
-may_trim:      ld  a,(de)           ; sprite y
-               cp  &10              ; hidden sprite?
-               jr  c,no_trim
+               ld  a,e              ; max
+               and a
+               jp  z,page_rom       ; zero means no trim
+               sub d                ; subtract min to give block
+               add a,12             ; add sprite height to give span
+               ld  b,a              ; line count for trim
 
-               ld  e,12             ; height of sprite
-               ld  hl,&4f45         ; left of tunnel
-               cp  &8c              ; sprite y for tunnel?
-               jr  z,trim_edge
-               ld  e,24             ; height of 2 sprites
-               ld  hl,&4d65         ; left of intermission row
-trim_edge:
-               ld  a,h
-               or  ixh              ; offset to current screen
+               ld  l,e              ; top line, due to mirrored y!
+               ld  h,conv_y/256
+               ld  l,(hl)           ; convert y to Speccy line
+               ld  h,scradtab/256
+               ld  c,(hl)           ; LSB of line start
+               inc h
+               ld  a,(hl)           ; MSB of line start
+               add a,ixh            ; current screen offset
                ld  h,a
+               ld  l,c
 
-               ld  a,%00000100      ; +3 normal paging, R3/5/2/7
-               ld  bc,&1ffd
-               out (c),a            ; normal paging (screen)
+               call page_screen
 
-               ld  b,e              ; line count
-               ld  de,&03fc         ; masks for below
+               ld  de,&0300         ; D=left mask, E=clear byte
+trim_r_lp:     ld  c,l              ; save line start LSB
 
-trim_line_lp:  ld  a,(hl)
-               and d                ; clear 6 pixels
-               ld  (hl),a
-               ld  c,l
-               ld  a,l
-               add a,&15            ; advance to right edge
+               ld  a,c
+               add a,4
                ld  l,a
+
+               ld  (hl),e           ; full byte to trim 6 pixels
+               inc l
                ld  a,(hl)
-               and e                ; clear 2 pixels
+               and d                ; trim 6 pixels at maze left
                ld  (hl),a
-               ld  l,c              ; restore left position
+
+               ld  a,c
+               add a,26             ; right tunnel offset
+               ld  l,a
+
+               ld  a,(hl)
+               and &fc              ; trim 2 pixels at maze right
+               ld  (hl),a
+               inc l
+               ld  (hl),e           ; full byte
+               inc l
+               ld  (hl),e           ; full byte for final 2 pixels
+
+               ld  l,c              ; restore original LSB
                inc h                ; next line
                ld  a,h
                and %00000111
                call z,blockdown_hl
-               djnz trim_line_lp
 
-               ld  a,%00000001      ; +3 special paging, banks 0/1/2/3
-               ld  bc,&1ffd
-               out (c),a            ; page ROM
-
-               ret
+               djnz trim_r_lp
+               jp  page_rom
 
 
 ; Clear a sprite-sized hole, used for blank tiles in our fruit and lives display
