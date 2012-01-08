@@ -1,4 +1,4 @@
-Pac-Man Emulator for Sinclair Spectrum (v1.2)
+Pac-Man Emulator for Sinclair Spectrum (v1.3)
 ---------------------------------------------
 
 This program requires a Spectrum +2A/+3, and will not work on earlier models.
@@ -19,6 +19,13 @@ Many thanks to #zx and WOS for feedback and testing :)
 Enjoy!
 
 ---
+
+Version 1.3 (2012/01/08)
+- Added run-time colour/mono sprite selection
+- Added boot-time selection of Hard difficulty
+- Restored traditional blue/white maze flash when using blue/white colours
+- Restored sprite trimming at maze edges in colour version
+- Added loading message to show version number
 
 Version 1.2 (2011/12/06)
 - Added colour sprites
