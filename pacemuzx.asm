@@ -191,14 +191,15 @@ clear_io:      ld  (hl),a           ; zero fill it
                inc l
                jr  nz,clear_io
 
-               ld  a,&bf
-               in  a,(keyboard)
-               bit 4,a              ; Z if H pressed
-
                ld  a,(dip_5000)     ; set hardware dips to our defaults
                ld  (&5000),a
                ld  a,(dip_5040)
                ld  (&5040),a
+
+               ld  a,&bf
+               in  a,(keyboard)
+               bit 4,a              ; Z if H pressed
+
                ld  a,(dip_5080)
                jr  nz,not_hard
                and %10111111        ; set Hard difficulty
