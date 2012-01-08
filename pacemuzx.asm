@@ -3,7 +3,7 @@
 ; http://simonowen.com/spectrum/pacemuzx/
 
 debug:         equ 0                ; non-zero for border stripes showing CPU use
-colour:        equ 1                ; non-zero for coloured sprites
+colour:        equ 1                ; non-zero for switchable colour/mono, zero for mono-only
 
 ; Memory maps
 ;
@@ -318,19 +318,17 @@ set_border 1
 set_border 2
                call do_tiles        ; update a portion of the background tiles
 set_border 3
-               call flash_maze      ; update maze colour if changed
-               call flash_pills     ; flash the power pills
-set_border 4
-               call do_save         ; save under the new sprite positions
-set_border 5
-               call do_sprites      ; draw the 6 new masked sprites
-set_border 6
-IF !colour
-               call do_trim         ; trim sprites at screen edge
-ENDIF
-set_border 7
                call do_input        ; scan the joystick and DIP switches
                call do_sound        ; convert the sound to the AY chip
+set_border 4
+               call flash_maze      ; update maze colour if changed
+               call flash_pills     ; flash the power pills
+set_border 5
+               call do_save         ; save under the new sprite positions
+set_border 6
+               call do_sprites      ; draw the 6 new masked sprites
+set_border 7
+               call do_trim         ; trim sprites at screen edge
 set_border 0
 
                ld  hl,&5062         ; sprite 1 x
@@ -846,6 +844,17 @@ not_o:
                res 5,d              ; space = coin 1
                res 5,e              ; space = start 1
 not_space:
+IF colour
+               ld  a,&fe
+               in  a,(keyboard)
+               bit 3,a              ; C = colour
+               jp  z,set_colour
+
+               ld  a,&7f
+               in  a,(keyboard)
+               bit 2,a              ; M = mono
+               jp  z,set_mono
+ENDIF
 
 ; Kempston joystick
 read_joy:      in  a,(kempston)     ; read Kempston joystick
@@ -1070,8 +1079,9 @@ tile_comp:     call find_change     ; scan block for display changes
                jr  c,tile_mapped
                cp  176-63+6         ; after last ghost tile?
                jr  nc,tile_mapped
-
-IF !colour
+IF colour
+patch_jr:      jr  tile_mapped
+ENDIF
                ex  af,af'           ; save tile
                set 2,d              ; switch to attributes
                ld  a,(de)           ; fetch tile attribute
@@ -1081,7 +1091,6 @@ IF !colour
                dec c                ; red ghost?
                jr  nz,tile_mapped
                add a,6              ; offset to Blinky tiles
-ENDIF
 tile_mapped:
                ex  af,af'           ; save tile for later
                push de
@@ -1289,7 +1298,6 @@ draw_spr:      ld  a,h
 
                ex  af,af'
                call map_sprite      ; map sprites to the correct orientation/colour
-
 draw_spr2:
                ex  de,hl
                add a,a              ; *2
@@ -1356,6 +1364,8 @@ spr_2_start:   ld  a,(de)
                djnz spr_2_lp
                pop hl
 IF colour
+patch_jp1:     ld  bc,page_rom      ; LD=mono, JP=colour
+
                ex  af,af'
                ld  c,a
                ld  b,h
@@ -1434,6 +1444,8 @@ spr_3_start:   ld  a,(de)
                djnz spr_3_lp
                pop hl
 IF colour
+patch_jp2:     ld  bc,page_rom     ; LD=mono, JP=colour
+
                ex  af,af'
                ld  c,a
                ld  b,h
@@ -1530,13 +1542,17 @@ map_big:       cp  24               ; closed mouth
                ret
 
 map_ghost:     ; D = 01=red 03=pink 05=cyan 07=orange
-IF !colour
-               sub 16               ; offset to ghost with mouth
+IF colour
+patch_sub:     sub 0                ; offset to ghost with mouth (0=colour, 16=mono)
+ELSE
+               sub 16
 ENDIF
                dec d                ; red?
                ret z
-IF !colour
-               add a,16             ; restore original ghost sprite
+IF colour
+patch_add:     add a,0              ; restore original ghost sprite (0=colour, 16=mono)
+ELSE
+               add a,16
 ENDIF
                bit 3,d              ; transparent colour?
                jr  nz,map_eyes
@@ -1557,12 +1573,14 @@ map_eyes:      ld  c,&47            ; bright white
 
 map_scared:
 IF colour
-               add a,2              ; use solid scared ghost, coloured blue
+patch_add2:    add a,2              ; use solid scared ghost, coloured blue (2=colour, 0=mono)
 ENDIF
                bit 1,d              ; check colour
                ret z                ; return if normal colour (transparent)
-IF !colour
-               add a,2              ; use solid scared ghost for white
+IF colour
+patch_add3:    add a,0              ; use solid scared ghost for white (0=colour, 2=mono)
+ELSE
+               add a,2
 ENDIF
                ld  c,&47            ; white
                ret
@@ -2800,6 +2818,87 @@ find_change:   ld  a,(de)   ; 0
 
                pop hl               ; junk return to update
                ret
+
+IF colour
+set_mono:      ld  a,&c3            ; JP
+               ld  (patch_jp1),a
+               ld  (patch_jp2),a
+
+               ld  a,16             ; offset to ghost with mouth
+               ld  (patch_sub+1),a
+               ld  (patch_add+1),a 
+               xor a
+               ld  (patch_add2+1),a
+               ld  a,2              ; offset between blue ghosts
+               ld  (patch_add3+1),a
+
+               ld  a,&0e            ; LD C,n
+               ld  (patch_jr),a
+
+               xor a                ; dummy colour mask
+               ld  (patch_and+1),a
+
+               call page_screen
+               ld  hl,&5afd         ; current attr from first (bottom) fruit
+               ld  a,(attr_colour)  ; maze colour
+               cp  (hl)
+               jp  z,page_rom       ; nothing to do if already mono
+
+               ld  hl,&59a2         ; attr column above lives
+               call mono_strip
+               ld  hl,&59bd         ; attr column above fruits
+               call mono_strip
+               jp  page_rom
+
+set_colour:    ld  a,&01            ; LD BC,nn
+               ld  (patch_jp1),a
+               ld  (patch_jp2),a
+
+               xor a                ; no offset for Blinky
+               ld  (patch_sub+1),a
+               ld  (patch_add+1),a
+               ld  (patch_add3+1),a
+               ld  a,2              ; offset between blue ghosts
+               ld  (patch_add2+1),a
+
+               ld  a,&18            ; JR
+               ld  (patch_jr),a
+
+               ld  a,7             ; colour mask
+               ld  (patch_and+1),a
+
+               call page_screen
+               ld  hl,&5afd         ; first fruit attr
+               ld  a,(attr_colour)  ; maze colour
+               cp  (hl)
+               jp  nz,page_rom      ; nothing to do if already colour
+
+               ld  hl,bak_chars1
+               ld  de,bak_chars2
+               ld  b,&40            ; 2 lines of 32 background tiles
+               ld  a,b              ; &40 = space
+redraw_lp:     ld  (hl),a           ; write spaces over our cached values
+               ld  (de),a           ; to force a redraw of any fruits, in colour
+               inc l
+               inc e
+               djnz redraw_lp
+               jp  page_rom
+
+
+mono_strip:    ld  a,(attr_colour)  ; maze colour
+strip_alt:     ld  de,32-1          ; offset to next attr line, adjusted for width=2
+               ld  b,11
+strip_lp:      ld  (hl),a           ; paint back to mono
+               inc l
+               ld  (hl),a
+               add hl,de
+               djnz strip_lp
+               bit 7,h              ; already painting the alt screen?
+               ret nz               ; return if so
+               ld  de,&8000-(11*32) ; offset between normal and alt screens
+               add hl,de
+               jr  strip_alt
+ENDIF
 
 end_a000:      equ $
 
