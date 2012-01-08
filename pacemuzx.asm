@@ -97,6 +97,9 @@ dip_5080:      defb %11001001       ; -dbbllcc      d=hard/normal bb=bonus life 
 
 start2:        di
 
+               ld  hl,loading_msg
+               call print_msg
+
                ld  a,(&5b5c)        ; sysvar holding 128K paging
                ex  af,af'           ; keep safe
                ld  a,%00000001      ; special paging, banks 0/1/2/3
@@ -115,9 +118,6 @@ start2:        di
 
 ; Next, move any data from load position to final location
 start3:        ld  sp,new_stack
-
-               xor a
-               out (border),a       ; black border
 
                ld  hl,&0000
                ld  de,&e000
@@ -180,54 +180,10 @@ no_specnet:
                ld  bc,&0720
                ldir                 ; copy unshifted sprite data
 
-; Clear both screens and set the default attribute colour
-               ld  b,2              ; 2 screens to prepare
-scrinit_lp:    push bc
-
-               ld  hl,&4000
-               ld  de,&4001
-               ld  bc,&1800
-               ld  a,h
-               or  ixh
-               ld  h,a
-               ld  d,a
-               ld  (hl),l           ; clear display data
-               ldir
-
-               ld  bc,&0300         ; &300 bytes to fill
-               ld  a,(attr_colour)
-               ld  (hl),a           ; fill display attrs
-               ldir
-
-               ld  bc,spr_save_end-spr_save_2
-               ld  (hl),l           ; clear sprite restore data
-               ldir
-
-IF !colour
-               ld  hl,&5800+(10*32)+4 ; left column of tunnel trim 
-               ld  a,h
-               or  ixh
-               ld  h,a
-               ld  bc,23            ; right column to left on next row
-               ld  de,32-24         ; left column to right column
-               ld  a,5              ; 5 blocks per column 
-attr_lp:       ld  (hl),b           ; hide left column (6 pixels needed)
-               add hl,bc
-               ld  (hl),b           ; hide right column 0
-               inc l
-               ld  (hl),b           ; hide right column 1 (2 pixels needed)
-               add hl,de
-               dec a
-               jr nz,attr_lp
-ENDIF
-               call do_flip         ; switch to other display
-               pop bc
-               djnz scrinit_lp      ; finish both screens
-
-
                call make_tables     ; create all the look-up tables and pre-shift sprites
                call page_rom        ; page in sound table and ROM
                call sound_init      ; enable sound chip
+               call init_screens    ; prepare both screens and sprite save areas
 
                ld  hl,&5000         ; Pac-Man I/O area
                xor a
@@ -2580,6 +2536,40 @@ chk_specnet:   ld  hl,&3ff9         ; PAGEIN
                jp  &007c            ; exit via RET in Speccy ROM to page out
 
 
+; Clear both screens and sprite save areas, and set default attrs
+init_screens:  call page_screen
+
+               ld  b,2              ; 2 screens to prepare
+scrinit_lp:    push bc
+
+               ld  hl,&4000         ; Speccy display
+               ld  de,&4001
+               ld  bc,&1800         ; display length
+
+               ld  a,h
+               or  ixh              ; adjust for current screen
+               ld  h,a
+               ld  d,a
+
+               ld  (hl),l           ; clear display data
+               ldir
+
+               ld  bc,&0300         ; &300 bytes to fill
+               ld  a,(attr_colour)
+               ld  (hl),a           ; fill display attrs
+               ldir
+
+               ld  bc,spr_save_end-spr_save_2
+               ld  (hl),l           ; clear sprite restore data
+               ldir
+
+               call do_flip         ; switch to other display
+               pop bc
+               djnz scrinit_lp      ; finish both screens
+
+               jp  page_rom
+
+
 ; Display a message using the ROM routines
 ; String in HL (null-terminated), paging expected to be correct
 ;
@@ -2596,6 +2586,9 @@ msg_lp:        ld  a,(hl)
                inc l
                jr  msg_lp
 
+
+loading_msg:   defm "pacemuzx v1.3"
+               defb 0
 
 specnet_msg:   defm "Disable Spectranet traps now..."
                defb 0
