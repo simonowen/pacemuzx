@@ -1,10 +1,11 @@
-TAPE=pacemuzx.tap
+NAME=pacemuzx
 ROMS=pacman.6e pacman.6f pacman.6h pacman.6j
+UNAME := $(shell uname -s)
 
 .PHONY: dist clean
 
-$(TAPE): loader.tap pacemuzx.o
-	cat loader.tap pacemuzx.o > $@
+$(NAME).tap: loader.tap $(NAME).o
+	cat loader.tap $(NAME).o > $@
 
 tiles.bin: tiles.png
 	./png2bin.pl $< 6
@@ -12,19 +13,26 @@ tiles.bin: tiles.png
 sprites.bin: sprites.png
 	./png2bin.pl $< 12
 
-pacemuzx.o: pacemuzx.asm tiles.bin sprites.bin $(ROMS)
-	pasmo --tap pacemuzx.asm pacemuzx.o pacemuzx.sym
+$(NAME).o: $(NAME).asm tiles.bin sprites.bin $(ROMS)
+	pasmo --tap $(NAME).asm $(NAME).o $(NAME).sym
 
-dist: $(TAPE)
+run: $(NAME).tap
+ifeq ($(UNAME),Darwin)
+	open $(NAME).tap
+else
+	xdg-open $(NAME).tap
+endif
+
+dist: $(NAME).tap
 	rm -rf dist
 	mkdir dist
 	cp ReadMe.txt dist/
 	cp Makefile-dist dist/Makefile
 	cp make.bat-dist dist/make.bat
-	./remove_rom.pl $(TAPE)
+	./remove_rom.pl $(NAME).tap
 	mv start.part end.part dist/
 
 clean:
-	rm -f $(TAPE) pacemuzx.sym pacemuzx.o
+	rm -f $(NAME).tap $(NAME).sym $(NAME).o
 	rm -f tiles.bin sprites.bin start.part end.part
 	rm -rf dist

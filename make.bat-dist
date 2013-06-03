@@ -1,4 +1,6 @@
 @echo off
+setlocal
+set NAME=pacemuzx
 
 if not exist pacman.6e goto missing
 if not exist pacman.6f goto missing     
@@ -15,7 +17,7 @@ echo must provide your own copies of:
 echo.
 echo   pacman.6e pacman.6f pacman.6h pacman.6j
 echo.
-echo Copy them to this directory and re-run to generate: pacemuzx.tap
+echo Copy them to this directory and re-run to generate: %NAME%.tap
 echo.
 echo ****************************************************************
 echo.
@@ -23,8 +25,9 @@ pause
 goto end
 
 :got_roms
-copy /b start.part+pacman.6e+pacman.6f+pacman.6h+pacman.6j+end.part pacemuzx.tap
+copy /b start.part+pacman.6e+pacman.6f+pacman.6h+pacman.6j+end.part %NAME%.tap
 
-start pacemuzx.tap
+start %NAME%.tap
 
 :end
+endlocal
