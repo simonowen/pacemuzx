@@ -1280,7 +1280,7 @@ tile_exit:
 ; Draw a 12x12 sprite  (H=x, L=y, D=attr)
 ;
 draw_spr:      ld  a,h
-               cp  &10
+               cp  &11
                ret c                ; off bottom of screen
                ld  a,l
                inc a                ; catch 255 as invalid
