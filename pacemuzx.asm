@@ -1,4 +1,4 @@
-; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.3)
+; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.4)
 ;
 ; http://simonowen.com/spectrum/pacemuzx/
 
@@ -2656,7 +2656,7 @@ msg_lp:        ld  a,(hl)
                jr  msg_lp
 
 
-loading_msg:   defm "pacemuzx v1.3"
+loading_msg:   defm "pacemuzx v1.4"
                defb 0
 
 specnet_msg:   defm "Disable Spectranet traps now..."

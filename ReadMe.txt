@@ -1,4 +1,4 @@
-Pac-Man Emulator for Sinclair Spectrum (v1.3)
+Pac-Man Emulator for Sinclair Spectrum (v1.4)
 ---------------------------------------------
 
 This program requires a Spectrum +2A/+3, and will not work on earlier models.
@@ -19,6 +19,9 @@ Many thanks to #zx and WOS for feedback and testing :)
 Enjoy!
 
 ---
+
+Version 1.4 (2014/03/01)
+- Added support for diagonal control inputs from keyboard and 8-way joysticks
 
 Version 1.3 (2012/01/08)
 - Added run-time colour/mono sprite selection
