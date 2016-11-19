@@ -1,7 +1,7 @@
-Pac-Man Emulator for Sinclair Spectrum (v1.4)
+Pac-Man Emulator for Sinclair Spectrum (v1.5)
 ---------------------------------------------
 
-This program requires a Spectrum +2A/+3, and will not work on earlier models.
+This program requires a Spectrum +2A/+2B/+3, and won't work on earlier models.
 
 The Pac-Man ROMs cannot be supplied with this program, so you must supply your
 own copies of the following files (from the Midway ROM set):
@@ -14,11 +14,32 @@ or combine manually using:
 
   cat start.part pacman.6[efhj] end.part > pacemuzx.tap
 
+Then load the .tap tape image in a Spectrum emulator of your choosing.
+
+Controls:
+
+  1 = 1 player start
+  2 = 2 player start
+  3 = insert coin
+
+  C = colour sprites
+  M = mono sprites
+  H = hard difficulty (hold during ROM boot)
+
+  Cursor keys, Q/A/O/P, Kempston/Sinclair joysticks = joystick control
+
+  Sym-1 to Sym-7 = set display colour, add Shift for bright
+
 Many thanks to #zx and WOS for feedback and testing :)
 
 Enjoy!
 
 ---
+
+Version 1.5 (2016/11/19)
+- Fixed code overflow crash on mono/colour toggle (thanks Matthew Logue)
+- Changed maze colours to be bright by default, with Shift to dim
+- Changed green ghost to non-bright yellow, to be closer to orange original
 
 Version 1.4 (2014/03/01)
 - Added support for diagonal control inputs from keyboard and 8-way joysticks

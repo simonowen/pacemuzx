@@ -1,4 +1,4 @@
-; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.4)
+; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.5)
 ;
 ; http://simonowen.com/spectrum/pacemuzx/
 
@@ -17,8 +17,8 @@ colour:        equ 1                ; non-zero for switchable colour/mono, zero 
 ; 4000-50ff - Pac-Man display, I/O and working RAM
 ; 5100-7fff - unused
 ; 8000-9fff - 2nd half of sprite data
-; a000-afff - emulation code
-; b000-bfff - look-up tables
+; a000-b1ff - emulation code
+; b200-bfff - look-up tables
 ; c000-dfff - 8K sound table
 ; e000-ffff - first 8K of Pac-Man ROM (unpatched)
 ;
@@ -27,8 +27,8 @@ colour:        equ 1                ; non-zero for switchable colour/mono, zero 
 ; 4000-5aff - Spectrum display (normal)
 ; 5b00-5bef - screen data behind sprites (normal)
 ; 5bf0-9fff - pre-rotated sprite graphics
-; a000-afff - emulation code
-; b000-bfff - look-up tables
+; a000-b1ff - emulation code
+; b200-bfff - look-up tables
 ; c000-daff - Spectrum display (alt)
 ; db00-dbef - screen data behind sprites (alt)
 ; dbf0-ffff - pre-rotated tile graphics
@@ -718,7 +718,7 @@ do_input:      ld  de,&ffff         ; nothing pressed
                ld  a,&fe
                in  a,(keyboard)
                rra                  ; Shift?
-               jr  c,not_bright
+               jr  nc,not_bright
                set 6,c              ; use bright version
 not_bright:
 
@@ -961,7 +961,7 @@ tile_state:    ld  a,ixh
                bit 7,a              ; alt screen? (don't disturb carry!)
 
                jr  c,tile_strips    ; if any sprites are visible we'll draw in strips
-               jr  nz,fulldraw_alt     ; full screen draw (alt)
+               jr  nz,fulldraw_alt  ; full screen draw (alt)
 
 fulldraw_norm: ld  b,28
                ld  de,pac_chars
@@ -1576,7 +1576,7 @@ ELSE
                sub 16
 ENDIF
                dec d                ; red?
-               ret z
+               ret z                ; use bright red (sprite default)
 IF colour
 patch_add:     add a,0              ; restore original ghost sprite (0=colour, 16=mono)
 ELSE
@@ -1586,12 +1586,12 @@ ENDIF
                jr  nz,map_eyes
                srl d
                dec d                ; pink?
-               ld  c,&43            ; red
+               ld  c,&43            ; use bright magenta
                ret z
                dec d                ; cyan?
-               ld  c,&45
+               ld  c,&45            ; use bright cyan
                ret z
-               ld  c,&44            ; green (should be orange)
+               ld  c,&06            ; use yellow (should be orange)
                ret
 
 map_eyes:      ld  c,&47            ; bright white
@@ -2656,7 +2656,7 @@ msg_lp:        ld  a,(hl)
                jr  msg_lp
 
 
-loading_msg:   defm "pacemuzx v1.4"
+loading_msg:   defm "pacemuzx v1.5"
                defb 0
 
 specnet_msg:   defm "Disable Spectranet traps now..."
@@ -2950,13 +2950,11 @@ strip_lp:      ld  (hl),a           ; paint back to mono
                jr  strip_alt
 ENDIF
 
-end_a000:      equ $
-
-new_stack:     equ &b000            ; hangs back into &Axxx
+end_code:      equ $
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-               org &b000
+               org &b200
 ; Tables are generated here at run time
 conv_8_6:      defs &100
 conv_x:        defs &100
@@ -2975,7 +2973,9 @@ ENDIF
 
 end_b000:      equ $
 
-               org &b000
+new_stack:     equ &c000            ; hangs back into &BFxx
+
+               org &b200
 ; Graphics are here at load time
 load_tiles:    incbin "tiles.bin"      ; 192 tiles * 6 lines * 1 byte per line = 1152 bytes
 load_sprites:  incbin "sprites.bin"    ; 76 sprites * 12 lines * 2 byte per line = 1824 bytes
