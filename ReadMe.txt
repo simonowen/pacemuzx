@@ -1,4 +1,4 @@
-Pac-Man Emulator for Sinclair Spectrum (v1.5)
+Pac-Man Emulator for Sinclair Spectrum (v1.6)
 ---------------------------------------------
 
 This program requires a Spectrum +2A/+2B/+3, and won't work on earlier models.
@@ -35,6 +35,11 @@ Many thanks to #zx and WOS for feedback and testing :)
 Enjoy!
 
 ---
+
+Version 1.6 (2020/03/30)
+- Fixed error message corruption when required hardware not found
+- Updated to use tile2sam.py instead of png2bin.pl
+- Converted remove_rom.pl to Python
 
 Version 1.5 (2016/11/19)
 - Fixed code overflow crash on mono/colour toggle (thanks Matthew Logue)
