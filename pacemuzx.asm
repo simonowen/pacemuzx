@@ -1,6 +1,6 @@
 ; Pac-Man hardware emulation for the Sinclair ZX Spectrum (v1.6)
 ;
-; http://simonowen.com/spectrum/pacemuzx/
+; https://simonowen.com/spectrum/pacemuzx/
 
 debug:         equ 0                ; non-zero for border stripes showing CPU use
 colour:        equ 1                ; non-zero for switchable colour/mono, zero for mono-only
